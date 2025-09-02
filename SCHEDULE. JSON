@@ -1,1 +1,11 @@
+[
+  { "day": "Monday", "program": "Morning Gospel 8:00 - 10:00 AM" },
+  { "day": "Monday", "program": "Evening News 6:00 - 6:30 PM" },
+  { "day": "Tuesday", "program": "Jazz Hour 7:00 - 8:00 PM" },
+  { "day": "Wednesday", "program": "Youth Talk 5:00 - 6:00 PM" },
+  { "day": "Thursday", "program": "Classic Hits 8:00 - 9:00 PM" },
+  { "day": "Friday", "program": "Friday Praise Night 7:00 - 9:00 PM" },
+  { "day": "Saturday", "program": "Weekend Sports 4:00 - 5:00 PM" },
+  { "day": "Sunday", "program": "Sunday Worship 9:00 - 11:00 AM" }
+]
 
