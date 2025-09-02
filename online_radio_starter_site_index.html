@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your Online Radio</title>
+  <meta name="description" content="Simple, mobile-friendly online radio player." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b1324; --card:#121a2b; --text:#e7ecff; --muted:#9fb0ff; --accent:#6aa4ff;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: radial-gradient(1200px 600px at 10% 0%, #101a33, #060b17), var(--bg); color: var(--text); }
+    .wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .card { width: 100%; max-width: 720px; background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); border: 1px solid rgba(255,255,255,.08); border-radius: 24px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+    h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 40px); line-height: 1.1; }
+    p { margin: 0 0 18px; color: var(--muted); }
+    .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    button { appearance: none; border: 0; cursor: pointer; padding: 14px 18px; border-radius: 14px; font-weight: 700; color: #091227; background: var(--accent); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .pill { padding: 8px 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; font-size: 12px; color: var(--muted); }
+    .bar { width: 100%; height: 12px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; position: relative; }
+    .bar > div { height: 100%; width: 0%; background: linear-gradient(90deg, #6aa4ff, #98b7ff); transition: width .2s linear; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 640px) { .grid { grid-template-columns: 1fr auto; align-items: center; } }
+    .small { font-size: 12px; color: var(--muted); }
+    footer { margin-top: 24px; font-size: 12px; color: var(--muted); text-align: center; }
+    input[type="range"] { accent-color: var(--accent); }
+    .hidden { display: none; }
+    .notice { font-size: 13px; color: #ffe68a; background: rgba(255, 230, 138, .12); border: 1px solid rgba(255, 230, 138, .5); padding: 10px 12px; border-radius: 10px; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>🎙️ Your Station Name</h1>
+      <p id="now">Loading stream…</p>
+
+      <div class="grid">
+        <div class="row">
+          <button id="playBtn" disabled>Loading…</button>
+          <label class="pill">Live</label>
+        </div>
+        <div class="row" style="gap: 8px;">
+          <span class="small">Volume</span>
+          <input id="vol" type="range" min="0" max="1" step="0.01" value="0.9" />
+        </div>
+      </div>
+
+      <div class="bar" style="margin-top:14px;">
+        <div id="prog"></div>
+      </div>
+
+      <audio id="player" preload="none" crossorigin="anonymous"></audio>
+
+      <footer>
+        <div class="notice" style="margin-bottom:10px;">
+          <!-- HOW TO USE (choose one): -->
+          <strong>Setup:</strong>
+          Edit <code>STREAM_URL</code> below to your HTTPS Icecast/Shoutcast stream, e.g. <code>https://yourhost.example.com/live.mp3</code>.<br>
+          Optional: set <code>STATUS_JSON</code> to your Icecast JSON (<code>/status-json.xsl</code>) to show “Now Playing”.
+        </div>
+        <div class="small">Tip: Host this file on GitHub Pages, Netlify, or any static host. Your stream URL must be <strong>HTTPS</strong> to avoid browser mixed-content blocks.</div>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    // 1) PUT YOUR STREAM URL HERE (must be HTTPS):
+    const STREAM_URL = "https://example.com/live.mp3"; // ← change this
+
+    // 2) (Optional) If you use Icecast, set this to your JSON status endpoint
+    //    e.g. https://example.com/status-json.xsl
+    const STATUS_JSON = ""; // ← optional, leave blank to hide now playing
+
+    const audio = document.getElementById('player');
+    const playBtn = document.getElementById('playBtn');
+    const vol = document.getElementById('vol');
+    const now = document.getElementById('now');
+    const prog = document.getElementById('prog');
+
+    audio.src = STREAM_URL;
+    audio.addEventListener('canplay', () => {
+      playBtn.disabled = false;
+      playBtn.textContent = '▶️ Play';
+    });
+
+    playBtn.addEventListener('click', async () => {
+      if (audio.paused) {
+        try { await audio.play(); playBtn.textContent = '⏸ Pause'; }
+        catch(e) { playBtn.textContent = 'Tap to Play'; }
+      } else { audio.pause(); playBtn.textContent = '▶️ Play'; }
+    });
+
+    vol.addEventListener('input', () => { audio.volume = parseFloat(vol.value); });
+
+    // Fake progress bar for live streams (moves slowly to show activity)
+    let p = 0; setInterval(() => { p = (p + 2) % 100; prog.style.width = p + '%'; }, 500);
+
+    // Now Playing (Icecast)
+    async function fetchNowPlaying() {
+      if (!STATUS_JSON) { now.textContent = 'Live stream ready'; return; }
+      try {
+        const res = await fetch(STATUS_JSON, { cache: 'no-cache' });
+        const data = await res.json();
+        // Try to find the first mount with listeners
+        const mounts = (data.icestats && data.icestats.source) ? data.icestats.source : [];
+        const arr = Array.isArray(mounts) ? mounts : [mounts];
+        const live = arr.find(m => m.listeners > 0) || arr[0];
+        const title = live && (live.title || live.stream_start || live.server_name);
+        now.textContent = title ? `Now Playing: ${title}` : 'Live stream ready';
+      } catch (e) { now.textContent = 'Live stream ready'; }
+    }
+    fetchNowPlaying();
+    setInterval(fetchNowPlaying, 15000);
+  </script>
+
+  <!--
+  Alternative embed (Zeno.fm):
+  Replace the player above with the official iframe from your Zeno.fm dashboard.
+  Example:
+  <iframe src="https://zeno.fm/player/your-station-id/" width="100%" height="180" frameborder="0" scrolling="no"></iframe>
+  -->
+</body>
+</html>
