@@ -1,1 +1,8 @@
+[
+  { "title": "Song of Joy", "artist": "Artist One", "url": "https://www.example.com/music/song1.mp3" },
+  { "title": "Peaceful Night", "artist": "Artist Two", "url": "https://www.example.com/music/song2.mp3" },
+  { "title": "Morning Vibes", "artist": "Artist Three", "url": "https://www.example.com/music/song3.mp3" },
+  { "title": "Faithful Journey", "artist": "Artist Four", "url": "https://www.example.com/music/song4.mp3" },
+  { "title": "Happy Dance", "artist": "Artist Five", "url": "https://www.example.com/music/song5.mp3" }
+]
 
