@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your Online Radio – Full Site</title>
+  <meta name="description" content="Free, static, full radio website: live stream, AutoDJ playlist, weekly schedule, and comments." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0b1324; --card:#121a2b; --text:#e7ecff; --muted:#a9b6e5; --accent:#6aa4ff; --line: rgba(255,255,255,.1); }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:radial-gradient(1200px 600px at 10% 0%,#101a33,#060b17),var(--bg);color:var(--text)}
+    a{color:var(--accent);text-decoration:none}
+    .wrap{min-height:100vh;display:grid;grid-template-rows:auto 1fr auto}
+    header{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    header h1{font-size:clamp(22px,3vw,30px);margin:0}
+    .tag{padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px}
+    nav{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+    nav button{appearance:none;border:1px solid var(--line);background:transparent;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer}
+    nav button.active, button.primary{background:var(--accent);color:#0a1020;border-color:transparent}
+    main{padding:20px;display:grid;place-items:start}
+    .card{width:100%;max-width:1000px;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    h2{margin:8px 0 10px}
+    p{color:var(--muted);margin:6px 0 14px}
+    .bar{width:100%;height:12px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+    .bar>div{height:100%;width:0%;background:linear-gradient(90deg,#6aa4ff,#98b7ff);transition:width .2s linear}
+    input[type="range"]{accent-color:var(--accent)}
+    input, select, textarea{background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:10px 12px;width:100%}
+    table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line)}
+    .muted{color:var(--muted);font-size:13px}
+    .grid{display:grid;gap:14px}
+    @media(min-width:760px){.grid2{grid-template-columns:1fr 1fr}.grid3{grid-template-columns:1fr 1fr 1fr}}
+    footer{padding:18px 20px;color:var(--muted);border-top:1px solid var(--line)}
+    .hidden{display:none}
+    .notice{font-size:13px;color:#ffe68a;background:rgba(255,230,138,.12);border:1px solid rgba(255,230,138,.5);padding:10px 12px;border-radius:10px}
+    code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🎙️ Your Station Name</h1>
+      <span class="tag">Free Static Site</span>
+      <nav>
+        <button class="active" data-tab="listen">Listen</button>
+        <button data-tab="schedule">Weekly Plan</button>
+        <button data-tab="playlist">Playlist</button>
+        <button data-tab="comments">Comments</button>
+        <button data-tab="admin">Admin</button>
+      </nav>
+    </header>
+
+    <main>
+      <!-- LISTEN TAB -->
+      <section id="tab-listen" class="card">
+        <h2>Live Stream</h2>
+        <p id="now">Loading stream…</p>
+        <div class="grid grid2">
+          <div class="row">
+            <button id="playBtn" class="primary" disabled>Loading…</button>
+            <label class="tag">Live</label>
+          </div>
+          <div class="row" style="gap:8px;justify-content:flex-end">
+            <span class="muted">Volume</span>
+            <input id="vol" type="range" min="0" max="1" step="0.01" value="0.9" style="width:200px" />
+          </div>
+        </div>
+        <div class="bar" style="margin-top:12px"><div id="prog"></div></div>
+        <audio id="player" preload="none" crossorigin="anonymous"></audio>
+        <div class="notice" style="margin-top:12px">
+          <strong>Setup:</strong> Edit <code>STREAM_URL</code> and optional <code>STATUS_JSON</code> in the script below. If you use AzuraCast/Icecast, point <code>STATUS_JSON</code> to <code>/status-json.xsl</code>.
+        </div>
+      </section>
+
+      <!-- SCHEDULE TAB -->
+      <section id="tab-schedule" class="card hidden">
+        <h2>Weekly Plan</h2>
+        <p>Programs for the week. This page tries to load <code>schedule.json</code> from your repo. If missing, it uses the example below.</p>
+        <div id="schedule"></div>
+        <div class="row" style="margin-top:12px">
+          <button id="downloadSchedule">Download schedule.json</button>
+        </div>
+      </section>
+
+      <!-- PLAYLIST TAB -->
+      <section id="tab-playlist" class="card hidden">
+        <h2>AutoDJ Playlist</h2>
+        <p>Provide a <code>playlist.json</code> (array of tracks) to enable browser-side AutoDJ fallback when your live stream is offline.</p>
+        <div class="grid grid2">
+          <div>
+            <h3>Current Tracks</h3>
+            <table id="tracksTable"><thead><tr><th>#</th><th>Title</th><th>Artist</th><th>URL</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div>
+            <h3>Controls</h3>
+            <div class="row">
+              <button id="startAuto">Start AutoDJ</button>
+              <button id="stopAuto">Stop AutoDJ</button>
+              <button id="downloadPlaylist">Download playlist.json</button>
+            </div>
+            <p class="muted">Upload playlist.json</p>
+            <input type="file" id="playlistFile" accept="application/json" />
+          </div>
+        </div>
+      </section>
+
+      <!-- COMMENTS TAB -->
+      <section id="tab-comments" class="card hidden">
+        <h2>Listener Comments</h2>
+        <p>You can enable free, login-based comments via <a href="https://giscus.app" target="_blank">Giscus</a> (GitHub Discussions). Replace the <code>data-*</code> attributes below with your repo info. Until then, this area shows a placeholder.</p>
+        <div class="notice" id="giscusNotice">Giscus not configured yet. Edit the <code>&lt;script data-repo=…&gt;</code> attributes in the HTML to turn this on.</div>
+        <!-- Giscus embed (configure this) -->
+        <script src="https://giscus.app/client.js"
+          data-repo="YOURUSERNAME/YOUR_REPO"
+          data-repo-id="REPO_ID"
+          data-category="Announcements"
+          data-category-id="CATEGORY_ID"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="bottom"
+          data-theme="dark"
+          data-lang="en"
+          crossorigin="anonymous"
+          async>
+        </script>
+      </section>
+
+      <!-- ADMIN TAB -->
+      <section id="tab-admin" class="card hidden">
+        <h2>Admin</h2>
+        <p>Update the stream URL, schedule, and playlist. Changes here are only in your browser until you download the JSON files and commit them to your repo.</p>
+        <div class="grid grid3">
+          <div>
+            <h3>Stream Settings</h3>
+            <label class="muted">Stream URL (HTTPS)</label>
+            <input id="cfgStream" placeholder="https://example.com/live.mp3" />
+            <label class="muted">Status JSON (optional)</label>
+            <input id="cfgStatus" placeholder="https://example.com/status-json.xsl" />
+            <div class="row" style="margin-top:8px"><button id="saveStream">Apply to Player</button></div>
+          </div>
+          <div>
+            <h3>Schedule (JSON)</h3>
+            <textarea id="scheduleEditor" rows="12"></textarea>
+            <div class="row" style="margin-top:8px">
+              <button id="applySchedule">Apply</button>
+              <button id="downloadSchedule2">Download schedule.json</button>
+            </div>
+          </div>
+          <div>
+            <h3>Playlist (JSON)</h3>
+            <textarea id="playlistEditor" rows="12"></textarea>
+            <div class="row" style="margin-top:8px">
+              <button id="applyPlaylist">Apply</button>
+              <button id="downloadPlaylist2">Download playlist.json</button>
+            </div>
+          </div>
+        </div>
+        <p class="muted">To make edits permanent for everyone: download the JSON files here, then upload them to your GitHub repo root as <code>schedule.json</code> and <code>playlist.json</code>.</p>
+      </section>
+    </main>
+
+    <footer>
+      <div>Tip: Host on GitHub Pages. Your stream must be <strong>HTTPS</strong> (browsers block mixed content). For comments, configure Giscus above.</div>
+    </footer>
+  </div>
+
+  <script>
+    // ====== CONFIG ======
+    // 1) SET YOUR LIVE STREAM URL (HTTPS):
+    let STREAM_URL = "https://example.com/live.mp3"; // ← change this
+    // 2) OPTIONAL: Icecast/AzuraCast status endpoint for Now Playing
+    let STATUS_JSON = ""; // e.g. https://example.com/status-json.xsl
+
+    // ====== ELEMENTS ======
+    const audio = document.getElementById('player');
+    const playBtn = document.getElementById('playBtn');
+    const vol = document.getElementById('vol');
+    const now = document.getElementById('now');
+    const prog = document.getElementById('prog');
+
+    const tabs = document.querySelectorAll('nav button');
+    const sections = {
+      listen: document.getElementById('tab-listen'),
+      schedule: document.getElementById('tab-schedule'),
+      playlist: document.getElementById('tab-playlist'),
+      comments: document.getElementById('tab-comments'),
+      admin: document.getElementById('tab-admin')
+    };
+
+    // Admin controls
+    const cfgStream = document.getElementById('cfgStream');
+    const cfgStatus = document.getElementById('cfgStatus');
+    const saveStream = document.getElementById('saveStream');
+    const scheduleDiv = document.getElementById('schedule');
+    const scheduleEditor = document.getElementById('scheduleEditor');
+    const playlistEditor = document.getElementById('playlistEditor');
+
+    const downloadSchedule = document.getElementById('downloadSchedule');
+    const downloadSchedule2 = document.getElementById('downloadSchedule2');
+    const downloadPlaylist = document.getElementById('downloadPlaylist');
+    const downloadPlaylist2 = document.getElementById('downloadPlaylist2');
+
+    // Playlist tab
+    const startAuto = document.getElementById('startAuto');
+    const stopAuto = document.getElementById('stopAuto');
+    const playlistFile = document.getElementById('playlistFile');
+    const tracksTableBody = document.querySelector('#tracksTable tbody');
+
+    // ====== DEFAULT DATA (used if files are missing) ======
+    let SCHEDULE = {
+      "Monday": [{ time: "08:00", title: "Morning Vibes" }, { time: "18:00", title: "Drive Time" }],
+      "Tuesday": [{ time: "10:00", title: "Talk & News" }],
+      "Wednesday": [{ time: "14:00", title: "Hits Hour" }],
+      "Thursday": [{ time: "20:00", title: "Late Night Chill" }],
+      "Friday": [{ time: "19:00", title: "Weekend Warmup" }],
+      "Saturday": [{ time: "12:00", title: "Top 40" }],
+      "Sunday": [{ time: "09:00", title: "Gospel Hour" }]
+    };
+
+    let PLAYLIST = [
+      { title: "Sample Track 1", artist: "Artist A", url: "https://file-examples.com/storage/fe8f7f8b9c9f5a5e3a57e4a/2017/11/file_example_MP3_700KB.mp3" },
+      { title: "Sample Track 2", artist: "Artist B", url: "https://file-examples.com/storage/fe8f7f8b9c9f5a5e3a57e4a/2017/11/file_example_MP3_1MG.mp3" }
+    ];
+
+    // ====== INIT TABS ======
+    tabs.forEach(btn => btn.addEventListener('click', () => {
+      tabs.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      Object.values(sections).forEach(s => s.classList.add('hidden'));
+      sections[btn.dataset.tab].classList.remove('hidden');
+    }));
+
+    // ====== AUDIO PLAYER ======
+    function setStream(url){ audio.src = url; }
+    setStream(STREAM_URL);
+    audio.addEventListener('canplay', () => { playBtn.disabled = false; playBtn.textContent = '▶️ Play'; });
+    playBtn.addEventListener('click', async () => {
+      if (audio.paused) { try { await audio.play(); playBtn.textContent = '⏸ Pause'; } catch (e) { playBtn.textContent = 'Tap to Play'; } }
+      else { audio.pause(); playBtn.textContent = '▶️ Play'; }
+    });
+    vol.addEventListener('input', () => { audio.volume = parseFloat(vol.value); });
+    let p=0; setInterval(()=>{ p=(p+2)%100; prog.style.width=p+'%'; }, 500);
+
+    async function fetchNowPlaying(){
+      if(!STATUS_JSON){ now.textContent = 'Live stream ready'; return; }
+      try{
+        const res = await fetch(STATUS_JSON, { cache:'no-cache' });
+        const data = await res.json();
+        const mounts = (data.icestats && data.icestats.source) ? data.icestats.source : [];
+        const arr = Array.isArray(mounts) ? mounts : [mounts];
+        const live = arr.find(m => m.listeners > 0) || arr[0];
+        const title = live && (live.title || live.server_name || live.stream_start);
+        now.textContent = title ? `Now Playing: ${title}` : 'Live stream ready';
+      }catch(e){ now.textContent = 'Live stream ready'; }
+    }
+    fetchNowPlaying(); setInterval(fetchNowPlaying, 15000);
+
+    // ====== SCHEDULE ======
+    function renderSchedule(){
+      let html = '<table><thead><tr><th>Day</th><th>Time</th><th>Program</th></tr></thead><tbody>';
+      Object.keys(SCHEDULE).forEach(day => {
+        SCHEDULE[day].forEach((slot, idx) => {
+          html += `<tr><td>${idx===0?day:''}</td><td>${slot.time}</td><td>${slot.title}</td></tr>`;
+        });
+      });
+      html += '</tbody></table>';
+      scheduleDiv.innerHTML = html;
+      scheduleEditor.value = JSON.stringify(SCHEDULE, null, 2);
+    }
+
+    async function loadSchedule(){
+      try{ const r = await fetch('schedule.json'); if(r.ok){ SCHEDULE = await r.json(); } }catch(e){}
+      renderSchedule();
+    }
+
+    // ====== PLAYLIST ======
+    function renderPlaylist(){
+      tracksTableBody.innerHTML = '';
+      PLAYLIST.forEach((t,i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${i+1}</td><td>${t.title}</td><td>${t.artist||''}</td><td class="muted">${t.url}</td>`;
+        tracksTableBody.appendChild(tr);
+      });
+      playlistEditor.value = JSON.stringify(PLAYLIST, null, 2);
+    }
+
+    async function loadPlaylist(){
+      try{ const r = await fetch('playlist.json'); if(r.ok){ PLAYLIST = await r.json(); } }catch(e){}
+      renderPlaylist();
+    }
+
+    // Simple AutoDJ fallback
+    let autoIdx = 0; let autoMode = false;
+    async function startAutoDJ(){
+      autoMode = true;
+      if(!PLAYLIST.length){ alert('Playlist is empty'); return; }
+      function playNext(){
+        const track = PLAYLIST[autoIdx % PLAYLIST.length];
+        autoIdx++;
+        audio.src = track.url; audio.play().catch(()=>{});
+        now.textContent = `AutoDJ: ${track.title}${track.artist? ' – '+track.artist: ''}`;
+        audio.onended = () => { if(autoMode) playNext(); };
+      }
+      playNext();
+    }
+    function stopAutoDJ(){ autoMode=false; setStream(STREAM_URL); fetchNowPlaying(); }
+
+    startAuto.addEventListener('click', startAutoDJ);
+    stopAuto.addEventListener('click', stopAutoDJ);
+    playlistFile.addEventListener('change', async (e)=>{
+      const file = e.target.files[0]; if(!file) return;
+      const text = await file.text();
+      try{ PLAYLIST = JSON.parse(text); renderPlaylist(); } catch(err){ alert('Invalid JSON'); }
+    });
+
+    // ====== DOWNLOAD HELPERS ======
+    function downloadJSON(name, obj){
+      const blob = new Blob([JSON.stringify(obj, null, 2)], { type:'application/json' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+    }
+    downloadSchedule.addEventListener('click', ()=> downloadJSON('schedule.json', SCHEDULE));
+    downloadSchedule2.addEventListener('click', ()=> downloadJSON('schedule.json', SCHEDULE));
+    downloadPlaylist.addEventListener('click', ()=> downloadJSON('playlist.json', PLAYLIST));
+    downloadPlaylist2.addEventListener('click', ()=> downloadJSON('playlist.json', PLAYLIST));
+
+    // ====== ADMIN APPLY ======
+    document.getElementById('applySchedule').addEventListener('click', ()=>{
+      try{ SCHEDULE = JSON.parse(scheduleEditor.value); renderSchedule(); }
+      catch(e){ alert('Invalid schedule JSON'); }
+    });
+    document.getElementById('applyPlaylist').addEventListener('click', ()=>{
+      try{ PLAYLIST = JSON.parse(playlistEditor.value); renderPlaylist(); }
+      catch(e){ alert('Invalid playlist JSON'); }
+    });
+    saveStream.addEventListener('click', ()=>{
+      STREAM_URL = cfgStream.value || STREAM_URL;
+      STATUS_JSON = cfgStatus.value || STATUS_JSON;
+      stopAutoDJ(); setStream(STREAM_URL); fetchNowPlaying();
+      alert('Applied! (Remember to edit the constants in the HTML for permanence.)');
+    });
+
+    // ====== BOOT ======
+    function boot(){
+      cfgStream.value = STREAM_URL; cfgStatus.value = STATUS_JSON;
+      loadSchedule(); loadPlaylist();
+    }
+    boot();
+  </script>
+</body>
+</html>
